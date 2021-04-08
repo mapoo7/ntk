@@ -58,7 +58,7 @@ NFS_SVR="false"
 echo "***************************************************************************"                              >   $RESFILE 2>&1
 echo "*                                                                         *"                              >>  $RESFILE 2>&1
 echo "*            NCP Linux VM Configuration Check                             *"                              >>  $RESFILE 2>&1
-echo "*            Version : 0.6                                                *"                              >>  $RESFILE 2>&1
+echo "*            Version : 0.7                                                *"                              >>  $RESFILE 2>&1
 echo "*            Copyright : NBP                                              *"                              >>  $RESFILE 2>&1
 echo "*                                                                         *"                              >>  $RESFILE 2>&1
 echo "***************************************************************************"                              >>  $RESFILE 2>&1
@@ -101,6 +101,7 @@ then
     fi
     echo "" >> $RESFILE 2>&1
 else
+    relinfo=$(/bin/cat /etc/redhat-release)
     /bin/cat /etc/redhat-* >> $RESFILE 2>&1
     echo "" >> $RESFILE 2>&1
 fi
@@ -176,7 +177,9 @@ if [ $chkvar -eq 3 ]
         then
                 echo " A1-2) [OK] ncloud is OK" >> $RESFILE 2>&1
         else
-                echo " A1-2) [NOK] ncloud is NOT OK **(Only Gov)**" >> $RESFILE 2>&1
+                #echo " A1-2) [NOK] ncloud is NOT OK **(Only Gov)**" >> $RESFILE 2>&1
+                echo " A1-2) [OK] ncloud account is not exist. but it is ok." >> $RESFILE 2>&1
+	        echo "**(Because this server is not for Gov)**" >> $RESFILE 2>&1
 fi
 
 chkcmd="grep ^nbpmon: /etc/passwd /etc/shadow /etc/group"
@@ -212,10 +215,10 @@ if [ -x "$chkcmd" ]
 fi
 
 
-echo " A2-2) [CMD] egrep -i 'nsight_updater|ncloud_auto' /etc/rc.local" >> $RESFILE 2>&1
-echo "$(egrep -i 'nsight_updater|ncloud_auto' /etc/rc.local)" >> $RESFILE 2>&1
+echo " A2-2) [CMD] cat /etc/rc.local | grep -v ^# | egrep -ic 'nsight_updater|ncloud_auto'" >> $RESFILE 2>&1
+echo "$(cat /etc/rc.local | grep -v ^# | egrep -ic 'nsight_updater|ncloud_auto')" >> $RESFILE 2>&1
 
-if [ $(cat /etc/rc.local | egrep -ic 'nsight_updater|ncloud_auto') -eq 2 ];then
+if [ $(cat /etc/rc.local | grep -v ^# | egrep -ic 'nsight_updater|ncloud_auto') -eq 2 ];then
         echo " A2-2) [OK] nsight_updater, ncloud_auto exist in /etc/rc.local" >> $RESFILE 2>&1
 else
         echo " A2-2) [NOK] nsight_updater, ncloud_auto Not exist in /etc/rc.local... Please Check" >> $RESFILE 2>&1
@@ -228,19 +231,19 @@ if [ ! -f /etc/rc.d/rc.local ]; then
 
         if [ "$chkvar" == "-rwxr-xr-x" ]; then
                 if [ "$osmajor" -ge 16 ]; then
-                        chkcmd2=$(systemctl list-unit-files | grep rc.local | grep static | wc -l)
+                        chkcmd2=$(systemctl list-unit-files | grep rc.local | egrep 'static|enabled-runtime' | wc -l)
                         if [ $chkcmd2 -ge 1 ]; then
-                                echo "$(systemctl list-unit-files | grep rc.local | grep static)" >> $RESFILE 2>&1
-                                echo " A2-3) [OK] /etc/rc_local and permission(-rwxr-xr-x) is OK" >> $RESFILE 2>&1
+                                echo "$(systemctl list-unit-files | grep rc.local | egrep 'static|enabled-runtime')" >> $RESFILE 2>&1
+                                echo " A2-3) [OK] /etc/rc.local and permission(-rwxr-xr-x) is OK" >> $RESFILE 2>&1
                         else
-                                echo "$(systemctl list-unit-files | grep rc.local | grep static)" >> $RESFILE 2>&1
-                                echo " A2-3) [NOK] /etc/rc_local or permission(-rwxr-xr-x) is Not OK.. Please Check" >> $RESFILE 2>&1
+                                echo "$(systemctl list-unit-files | grep rc.local | egrep 'static|enabled-runtime')" >> $RESFILE 2>&1
+                                echo " A2-3) [NOK] /etc/rc.local or permission(-rwxr-xr-x) is Not OK.. Please Check" >> $RESFILE 2>&1
                         fi
                 else
-                        echo " A2-3) [OK] /etc/rc_local and permission(-rwxr-xr-x) is OK" >> $RESFILE 2>&1
+                        echo " A2-3) [OK] /etc/rc.local and permission(-rwxr-xr-x) is OK" >> $RESFILE 2>&1
                 fi
         else
-                echo " A2-3) [NOK] /etc/rc_local or permission(-rwxr-xr-x) is Not OK.. Please Check" >> $RESFILE 2>&1
+                echo " A2-3) [NOK] /etc/rc.local or permission(-rwxr-xr-x) is Not OK.. Please Check" >> $RESFILE 2>&1
         fi
 
 else
@@ -253,16 +256,16 @@ else
                         chkcmd2=$(systemctl list-unit-files | grep rc.local | grep static | wc -l)
                         if [ $chkcmd2 -ge 1 ]; then
                                 echo "$(systemctl list-unit-files | grep rc.local | grep static)" >> $RESFILE 2>&1
-                                echo " A2-3) [OK] /etc/rc.d/rc_local and permission(-rwxr-xr-x.) is OK" >> $RESFILE 2>&1
+                                echo " A2-3) [OK] /etc/rc.d/rc.local and permission(-rwxr-xr-x.) is OK" >> $RESFILE 2>&1
                         else
                                 echo "$(systemctl list-unit-files | grep rc.local | grep static)" >> $RESFILE 2>&1
-                                echo " A2-3) [NOK] /etc/rc.d/rc_local or permission(-rwxr-xr-x.) is Nok OK.. Please Check" >> $RESFILE 2>&1
+                                echo " A2-3) [NOK] /etc/rc.d/rc.local or permission(-rwxr-xr-x.) is Nok OK.. Please Check" >> $RESFILE 2>&1
                         fi
                 else
-                        echo " A2-3) [OK] /etc/rc.d/rc_local and permission(-rwxr-xr-x.) is OK" >> $RESFILE 2>&1
+                        echo " A2-3) [OK] /etc/rc.d/rc.local and permission(-rwxr-xr-x.) is OK" >> $RESFILE 2>&1
                 fi
         else
-                echo " A2-3) [NOK] /etc/rc.d/rc_local or permission(-rwxr-xr-x.) is Not OK.. Please Check" >> $RESFILE 2>&1
+                echo " A2-3) [NOK] /etc/rc.d/rc.local or permission(-rwxr-xr-x.) is Not OK.. Please Check" >> $RESFILE 2>&1
         fi
 
 fi
@@ -286,15 +289,24 @@ else
 fi
 
 echo " A3-2) [CMD] /bin/ls -ld /usr/sbin/nsight_updater" >> $RESFILE 2>&1
-/bin/ls -ld /usr/sbin/nsight_updater >> $RESFILE 2>&1
 
-chkvar=$(/bin/ls -ld /usr/sbin/nsight_updater | awk '{print $1}')
-if [[ $chkvar == "-rwxr-xr-x" ]]; then
-        echo " A3-2) [OK] nsight_updater exist and permission(-rwxr-xr-x) is OK" >> $RESFILE 2>&1
+if [ "$relinfo" = "Ubuntu 18.04.4 LTS" ]; then
+    /bin/ls -ld /home1/nbpmon/nsight_updater >> $RESFILE 2>&1
+    chkvar=$(/bin/ls -ld /home1/nbpmon/nsight_updater | awk '{print $1}')
+    echo " A3-2) [OK] nsight_updater exist and permission(-rw-r--r--) is OK" >> $RESFILE 2>&1
+elif [ "$relinfo" = "CentOS Linux release 7.8.2003 (Core)" ]; then
+    /bin/ls -ld /usr/sbin/nsight_updater >> $RESFILE 2>&1
+    chkvar=$(/bin/ls -ld /usr/sbin/nsight_updater | awk '{print $1}')
+    echo " A3-2) [OK] nsight_updater exist and permission(-rw-r--r--) is OK" >> $RESFILE 2>&1
 else
+    /bin/ls -ld /usr/sbin/nsight_updater >> $RESFILE 2>&1
+    chkvar=$(/bin/ls -ld /usr/sbin/nsight_updater | awk '{print $1}')
+    if [[ $chkvar == "-rwxr-xr-x" ]]; then
+        echo " A3-2) [OK] nsight_updater exist and permission(-rwxr-xr-x) is OK" >> $RESFILE 2>&1
+    else
         echo " A3-2) [NOK] nsight_updater Nok exist or permission(-rwxr-xr-x) is Not OK... Please Check" >> $RESFILE 2>&1
-fi
-
+    fi
+fi		   
 
 if [[ "$osrel" == "Ubuntu" ]]; then
         echo " A3-3) [CMD] /bin/ls -al /etc/rc5.d/ | egrep -i 'noms_nsight'" >> $RESFILE 2>&1
@@ -458,7 +470,11 @@ then
                 echo " A5-$subnumber-3) [NOK] $chkvar : File system check order is not good(${chkvardtl[1]})" >> $RESFILE 2>&1
             fi
         else
+            if [ "$relinfo" = "Ubuntu 18.04.4 LTS" ]; then
+                echo " A5-$subnumber) [OK] $chkvar : This is "$relinfo", so skip." >> $RESFILE 2>&1
+            else
                 echo " A5-$subnumber) [NOK] $chkvar : File System UUID doesn't exist in /etc/fstab" >> $RESFILE 2>&1
+            fi
         fi
         cntnumber=$((cntnumber+1))
         subnumber=$((subnumber+1))
@@ -799,7 +815,7 @@ do
         chkvar=$(/bin/ls -al ${arr[0]} | awk '{print $1}')
         echo " [CHECK] ${arr[0]} permission(${arr[1]}) is $chkvar" >> $RESFILE 2>&1
     else
-        echo " [NOK] ${arr[0]} file does not exist" >> $RESFILE 2>&1
+        echo " B1) [NOK] ${arr[0]} file does not exist" >> $RESFILE 2>&1
     fi
 done
 echo "" >> $RESFILE 2>&1
@@ -873,12 +889,13 @@ chkfile="/etc/profile"
 if [ -f $chkfile ]
 then
     echo " [CMD] /bin/grep -i tmout $chkfile" >> $RESFILE 2>&1
-    /bin/grep -i tmout $chkfile;exitcode=$?
+    /bin/grep -i tmout $chkfile >& /dev/null; exitcode=$?
     if [[ "$exitcode" -eq 0 ]]
     then 
         echo " [OK] TMOUT env exist in $chkfile" >> $RESFILE 2>&1
     else
-        echo " [NOK] TMOUT env deos not exist in $chkfile" >> $RESFILE 2>&1
+        #echo " B4) [NOK] TMOUT env deos not exist in $chkfile" >> $RESFILE 2>&1
+        echo " B4) [WARN] TMOUT env deos not exist in $chkfile" >> $RESFILE 2>&1
     fi
 else
     echo " [WARN] $chkfile file does not exist" >> $RESFILE 2>&1
@@ -920,13 +937,13 @@ do
     arr=($(echo $chkvar | sed -e 's/:/\n/g'))
     if [ "${arr[1]}" -eq 0 ]
     then
-        echo " [NOK] ${arr[0]} user has UID(${arr[1]})" >> $RESFILE 2>&1
+        echo " B6) [NOK] ${arr[0]} user has UID(${arr[1]})" >> $RESFILE 2>&1
     else
         chkuval="ok"
     fi 
     if [ "${arr[2]}" -eq 0 ]
     then
-        echo " [NOK] ${arr[0]} group has GID(${arr[2]})" >> $RESFILE 2>&1
+	echo " B6) [NOK] ${arr[0]} group has GID(${arr[2]})" >> $RESFILE 2>&1
     else
         chkgval="ok"
     fi 
@@ -1146,14 +1163,22 @@ echo "" >> $RESFILE 2>&1
 
 echo "B13. Checking /etc/issue" >> $RESFILE 2>&1
 chkfile="/etc/issue"
+issue_cnt=$(find /etc -type f | awk -F "/" '{print $NF}' | grep ^issue | wc -l)
+
 echo " [CMD] /bin/ls -ld /etc/issue*" >> $RESFILE 2>&1
-/bin/ls -ld /etc/issue* >> $RESFILE 2>&1
-chkvar=$(/bin/ls -ld /etc/issue* | wc -l)
-if [ ! -z $chkvar ]
-then
-     echo " [CHECK] $chkfile exist : $chkvar" >> $RESFILE 2>&1
+
+if [ $issue_cnt == 0 ]; then
+    echo " [CHECK] $chkfile exist : $chkvar" >> $RESFILE 2>&1
+    echo " [OK]  $chkfile does not exist. but it is ok." >> $RESFILE 2>&1
 else
-     echo " [OK]  $chkfile does not exist" >> $RESFILE 2>&1
+    /bin/ls -ld /etc/issue* >> $RESFILE 2>&1
+    chkvar=$(/bin/ls -ld /etc/issue* | wc -l)
+    if [ ! -z $chkvar ]
+    then
+         echo " [CHECK] $chkfile exist : $chkvar" >> $RESFILE 2>&1
+    else
+         echo " [OK]  $chkfile does not exist" >> $RESFILE 2>&1
+    fi
 fi
 echo "" >> $RESFILE 2>&1
 

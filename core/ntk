@@ -164,7 +164,12 @@ if [ $RET = 0 ]; then
         progress_bar
     } | whiptail --gauge "Getting data ..." 6 60 0
         result_tmp=$(grep NOK $NTK/logs/ncp_vm_check/$HOSTNAME"_"$OS_STR"_"$DATE_STR".txt")
-        whiptail --msgbox --scrolltext "$result_tmp" --title "< Below are NOK(Not OK) Items. PgUp/Down, Up/Down, TAB Key >" 20 120
+	result_tmp_clean_check=$(grep NOK $NTK/logs/ncp_vm_check/$HOSTNAME"_"$OS_STR"_"$DATE_STR".txt" | wc -l)
+	if [ $result_tmp_clean_check == 0 ]; then
+            whiptail --msgbox --scrolltext "Status is good! There are no NOK items on this server. :)" --title "< Below are NOK(Not OK) Items. PgUp/Down, Up/Down, TAB Key >" 20 120
+        else
+            whiptail --msgbox --scrolltext "$result_tmp" --title "< Below are NOK(Not OK) Items. PgUp/Down, Up/Down, TAB Key >" 20 120
+        fi
 else
     return 0
 fi
@@ -207,7 +212,7 @@ if [ "$INTERACTIVE" = True ]; then
     calc_wt_size
     while [ 1 ]
     do
-    CHOICE=$(whiptail --title "< NTK(NCP Tool Kit) - v0.1 >" --menu "Select Item" $WT_HEIGHT_STATIC $WT_WIDTH $WT_MENU_HEIGHT \
+    CHOICE=$(whiptail --title "< NTK(NCP Tool Kit) - v0.2 >" --menu "Select Item" $WT_HEIGHT_STATIC $WT_WIDTH $WT_MENU_HEIGHT \
         "E" " EXECUTE - <<  SYSTEM APPS  >>" \
         "V" " VIEW    - << REPORTED LOGS >>" \
         "Q" " QUIT    - <<    PROGRAM    >>" \
