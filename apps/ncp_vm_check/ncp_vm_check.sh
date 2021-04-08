@@ -59,7 +59,7 @@ echo "**************************************************************************
 echo "*                                                                         *"                              >>  $RESFILE 2>&1
 echo "*            NCP Linux VM Configuration Check                             *"                              >>  $RESFILE 2>&1
 echo "*            Version : 0.7                                                *"                              >>  $RESFILE 2>&1
-echo "*            Copyright : NBP                                              *"                              >>  $RESFILE 2>&1
+echo "*            Copyright : NAVER Cloud                                      *"                              >>  $RESFILE 2>&1
 echo "*                                                                         *"                              >>  $RESFILE 2>&1
 echo "***************************************************************************"                              >>  $RESFILE 2>&1
 echo ""                                                                                                         >>  $RESFILE 2>&1
