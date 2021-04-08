@@ -1,0 +1,229 @@
+#!/bin/bash
+# This script is the core of NTK(NCP Toolkit)
+
+export LC_ALL=C
+export LANG=C
+export PATH=$PATH:/sbin:/bin:/usr/local/sbin:/usr/local/bin
+
+HOSTNAME=$(/bin/hostname)
+DATE_STR=$(/bin/date +%Y%m%d)
+OS_STR=$(/bin/uname -o | /bin/sed 's,GNU/,,g');
+
+clear
+###### Load config for NTK ######
+if [ -f ./conf_ntk ]; then
+    . ./conf_ntk
+else
+    . /usr/local/etc/ntk/core/conf_ntk
+fi
+export NTK=$NTK
+###### Load config for NTK ######
+
+###### Functions Start ######
+## Funtion of random number ##
+randomcount () {
+MAXCOUNT=10
+count=1
+while [ "$count" -le $MAXCOUNT ] 
+do
+    rannum=$RANDOM
+    let "count += 1"
+done
+ 
+RANGE=1024
+FLOOR=0
+ 
+rannum=0
+while [ "$rannum" -le $FLOOR ]
+do
+    rannum=$RANDOM
+    let "rannum %= $RANGE"
+done
+}
+
+## Funtion of user check ##
+is_root () {
+if [ "$EUID" -eq 0 ]; then
+    return 0;
+else
+    WHO=$(whoami)
+    return 1;
+fi
+}
+
+## Funtion of define for window size ##
+calc_wt_size() {
+WT_HEIGHT_STATIC=17
+WT_HEIGHT=$(tput lines)
+WT_WIDTH=$(tput cols)
+
+if [ -z "$WT_WIDTH" ] || [ "$WT_WIDTH" -lt 60 ]; then
+  WT_WIDTH=80
+fi
+if [ "$WT_WIDTH" -gt 178 ]; then
+  WT_WIDTH=120
+fi
+WT_MENU_HEIGHT=$(($WT_HEIGHT_STATIC-12))
+}
+
+## Funtion of progress bar ##
+PROGSLEEP=0.5
+PROGCOUNT=2
+progress_bar() {
+#PER=$(bc <<< "100/$PROGCOUNT")
+PER=$(expr 100 / $PROGCOUNT)
+for ((i=$PER ; i<=100 ; i+=$PER))
+do
+    echo $i
+    sleep $PROGSLEEP
+    #MAX=$(bc <<< "100-$i")
+    MAX=$(expr 100 - $i)
+    if [ $PER -gt $MAX ]; then
+        if ! [ $MAX -eq 0 ]; then
+            echo 100
+        fi
+    fi
+done
+}
+
+check_log_status () {
+MAX=100
+sleep 0.1
+while true
+do
+    if [ "$LOGCHK" = "0" ]; then
+        break;
+    fi
+    if [ $MAX -eq 0 ]; then
+        break;
+    fi
+    sleep 0.1
+    let MAX-=1
+done
+}
+
+running_check () {
+MAXCHK=1
+while [ 1 ]
+do
+    if [ -n $LOGCHKDIR ]; then
+    grep _Running `eval echo $LOGCHKDIR` >& /dev/null
+        if [ $? = 0 ]; then
+            break;
+        fi
+    fi
+    if [ $MAXCHK -eq 100 ]; then
+         echo "Value is over from $MAXCHK" >> $LOGCHKDIR
+         whiptail --msgbox "$LOGCHKDIR failed checking. $LOGCHKDIR refer to log please." 12 100
+         break 
+    fi
+    sleep 0.1
+MAXCHK=$[$MAXCHK +1]
+done
+}
+
+
+do_check () {
+CHOICE=$(whiptail --title "<< APPS LIST >>" --menu "Select Item" $WT_HEIGHT_STATIC $WT_WIDTH $WT_MENU_HEIGHT \
+  "S  SYSTEM CHECKING  " " - FOR DIAGNOSIS     >>" \
+  3>&1 1>&2 2>&3)
+RET=$?
+if [ $RET = 1 ]; then
+    return 0
+elif [ $RET = 0 ]; then
+    case "$CHOICE" in
+      S\ *) do_ncp_vm_check ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $CHOICE" 20 60 1
+fi
+}
+
+do_report () {
+CHOICE=$(whiptail --title "<< VIEWING LOG >>" --menu "Select Item" $WT_HEIGHT_STATIC $WT_WIDTH $WT_MENU_HEIGHT \
+  "S  " " - SYSTEM CHECKING LOG      >>" \
+  3>&1 1>&2 2>&3)
+RET=$?
+if [ $RET = 1 ]; then
+    return 0
+elif [ $RET = 0 ]; then
+    case "$CHOICE" in
+      S\ *) do_select_logs_vm_check ;;     
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $CHOICE" 20 60 1
+fi
+}
+
+do_ncp_vm_check () {
+randomcount
+whiptail --yesno "* Will start system checking.\n\n\n             Do you want to start checking??" 15 60 1
+RET=$?
+if [ $RET = 0 ]; then
+    {
+        $NTK/apps/ncp_vm_check/ncp_vm_check.sh &
+        PROGCOUNT=6
+        progress_bar
+    } | whiptail --gauge "Getting data ..." 6 60 0
+        result_tmp=$(grep NOK $NTK/logs/ncp_vm_check/$HOSTNAME"_"$OS_STR"_"$DATE_STR".txt")
+        whiptail --msgbox --scrolltext "$result_tmp" --title "< Below are NOK(Not OK) Items. PgUp/Down, Up/Down, TAB Key >" 20 120
+else
+    return 0
+fi
+}
+
+do_select_logs_vm_check () {
+ls -r $NTK/logs/ncp_vm_check/*.txt >& /dev/null
+FILESTATUS=$?
+#read -ra filelist <<< $(ls -r $NTK/logs/ncp_vm_check/*.txt | grep -n "" | awk '{print $NF}' | sed 's/\:\./\:/g' | awk -F "/" '{print $NF; print "<"$1">"}')
+filelist=( $(ls -r $NTK/logs/ncp_vm_check/*.txt | grep -n "" | awk '{print $NF}' | sed 's/\:\./\:/g' | awk -F "/" '{print $NF; print "<"$1">"}') )
+OPTION=$(whiptail --title "<<< LOG FILE LIST OF SYSTEM_CHECKING >>>" --menu "Select item" $WT_HEIGHT_STATIC $WT_WIDTH $WT_MENU_HEIGHT "${filelist[@]}" 3>&1 1>&2 2>&3)
+RET=$?
+if [ $FILESTATUS = 0 ]; then
+    if [ $RET = 0 ]; then
+	do_view_log_vm_check;
+    else
+        return 0
+    fi
+else
+    return 0
+
+fi
+}
+
+do_view_log_vm_check () {
+whiptail --yesno "* FUll LOG.\n\n\n     Do you want to read full log? (No: Display only NOK logs)" 15 70 1
+RET=$?
+if [ $RET = 0 ]; then
+    result_tmp=$(cat $NTK/logs/ncp_vm_check/$OPTION)
+    whiptail --msgbox --scrolltext "$result_tmp" --title "< Below are ALL Items. PgUp/Down, Up/Down, TAB Key >" $(($WT_HEIGHT-3)) $WT_WIDTH
+else
+    result_tmp=$(grep NOK $NTK/logs/ncp_vm_check/$OPTION)
+    whiptail --msgbox --scrolltext "$result_tmp" --title "< Below are NOK(Not OK) Items. PgUP/Down, Up/Down, TAB Key >" $(($WT_HEIGHT-10)) $WT_WIDTH
+fi
+do_select_logs_vm_check;
+}
+
+###### Interactive use loop Start ######
+if [ "$INTERACTIVE" = True ]; then
+    calc_wt_size
+    while [ 1 ]
+    do
+    CHOICE=$(whiptail --title "< NTK(NCP Tool Kit) - v0.1 >" --menu "Select Item" $WT_HEIGHT_STATIC $WT_WIDTH $WT_MENU_HEIGHT \
+        "E" " EXECUTE - <<  SYSTEM APPS  >>" \
+        "V" " VIEW    - << REPORTED LOGS >>" \
+        "Q" " QUIT    - <<    PROGRAM    >>" \
+         3>&2 2>&1 1>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            exit
+        elif [ $RET -eq 0 ]; then
+            case $CHOICE in
+              "E") do_check ;;
+              "V") do_report ;;
+              "Q") exit ;;
+            esac
+        else
+            exit 1
+        fi
+    done
+fi
+###### Interactive use loop End ######
